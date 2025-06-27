@@ -1,0 +1,4 @@
+chmod +x htop_installer.sh
+  
+  
+  ./htop_installer.sh
