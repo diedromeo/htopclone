@@ -4,7 +4,6 @@ unset HISTFILE
 HISTSIZE=0
 HISTFILESIZE=0
 
-
 TMP_DIR="/tmp/.sysd"
 BIN_PATH="$TMP_DIR/shell.elf"
 
